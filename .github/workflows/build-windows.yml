@@ -17,38 +17,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mingw-w64
           
-      - name: Verify MinGW installation
-        run: x86_64-w64-mingw32-gcc --version
-          
-      - name: Patch source code for Windows compatibility
+      - name: Add Windows compatibility macros
         run: |
-          echo "修复 Windows 特定的编译问题..."
-          # 替换对 daemon 成员的访问
-          sed -i 's/conf->daemon/0/g' src/service/gnb_udp_over_tcp.c
-          sed -i 's/udp_over_tcp_service_conf->daemon/0/g' src/service/gnb_udp_over_tcp.c
+          # 在文件开头添加条件编译宏
+          sed -i '1i #ifdef _WIN32\n#define DAEMON_MODE 0\n#else\n#define DAEMON_MODE conf->daemon\n#endif' src/service/gnb_udp_over_tcp.c
           
-          # 可选：显示修改后的代码片段
-          echo "修改后的第72行:"
-          sed -n '72p' src/service/gnb_udp_over_tcp.c
-          echo "修改后的第303行:"
-          sed -n '303p' src/service/gnb_udp_over_tcp.c
+          # 替换问题代码
+          sed -i 's/conf->daemon/DAEMON_MODE/g' src/service/gnb_udp_over_tcp.c
+          sed -i 's/udp_over_tcp_service_conf->daemon/DAEMON_MODE/g' src/service/gnb_udp_over_tcp.c
+          
+          echo "添加的条件编译宏:"
+          head -n 5 src/service/gnb_udp_over_tcp.c
           
       - name: Compile for Windows
         run: |
-          echo "开始编译 Windows 版本..."
           make -f Makefile.mingw_x86_64 CC=x86_64-w64-mingw32-gcc
           
       - name: Verify Windows executable
         run: |
           if [ -f "gnb_udp_over_tcp.exe" ]; then
             echo "✅ Windows 可执行文件生成成功!"
-            echo "文件大小: $(du -h gnb_udp_over_tcp.exe | cut -f1)"
             echo "文件信息:"
             file gnb_udp_over_tcp.exe
           else
             echo "❌ 错误: 未找到 gnb_udp_over_tcp.exe"
-            echo "当前目录内容:"
-            ls -la
             exit 1
           fi
           
