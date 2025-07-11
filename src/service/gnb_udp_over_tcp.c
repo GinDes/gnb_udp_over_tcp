@@ -302,10 +302,17 @@ int main (int argc,char *argv[]){
 
     log = gnb_log_ctx_create();
 
+    #ifdef __UNIX_LIKE_OS__
     if ( 0 == udp_over_tcp_service_conf->daemon && 1==verbose_opt ) {
         log_console_level = 3;
         log_udp_level     = 3;
     }
+    #else
+    if ( 1==verbose_opt ) {
+        log_console_level = 3;
+        log_udp_level     = 3;
+    }
+    #endif
 
     setup_log_ctx(udp_over_tcp_service_conf, log, log_path, log_udp_sockaddress4_string, log_console_level, log_file_level, log_udp_level);
 
