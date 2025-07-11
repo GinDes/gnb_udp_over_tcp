@@ -13,23 +13,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
+          
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev cmake build-essential
-
-      # 调试步骤（可删除）
-      - name: List files
-        run: ls -la
-
-      - name: Build GNB
+          sudo apt-get install -y liblzo2-dev liblz4-dev
+          
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+        
+      - name: Show directory structure
         run: |
-          mkdir -p build
-          cd build
-          cmake ..
-          make
-
+          echo "Project contents:"
+          ls -la
+          echo "lwip submodule contents:"
+          ls -la lwip
+          
+      - name: Compile GNB with build script
+        run: |
+          chmod +x build.sh
+          ./build.sh
+          
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
         with:
