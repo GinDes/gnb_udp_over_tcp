@@ -1,4 +1,4 @@
-name: Build GNB
+name: Build GNB UDP over TCP
 
 on:
   push:
@@ -11,47 +11,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Create build directory
+        run: mkdir -p build
+
+      - name: Configure with CMake
+        working-directory: build
+        run: cmake ..
+
+      - name: Compile project
+        working-directory: build
+        run: make
+
+      - name: Verify binary
         run: |
-          sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev gcc make
-          
-      - name: Try official Makefile
-        run: |
-          # 尝试使用官方 Makefile
-          if [ -f "Makefile.linux" ]; then
-            echo "使用 Makefile.linux 编译..."
-            make -f Makefile.linux
+          if [ -f "build/gnb_udp_over_tcp" ]; then
+            echo "✅ 编译成功！"
+            file build/gnb_udp_over_tcp
           else
-            echo "错误: Makefile.linux 不存在"
+            echo "❌ 错误：可执行文件未生成"
+            ls -lR build/
             exit 1
           fi
-          
-      - name: Move artifacts to build directory
-        run: |
-          mkdir -p build
-          # 尝试移动所有可能的目标文件
-          [ -f "gnb" ] && mv gnb build/
-          [ -f "gnb_ctl" ] && mv gnb_ctl build/
-          [ -f "gnb_crypto" ] && mv gnb_crypto build/
-          
-      - name: Verify build output
-        run: |
-          if [ -d "build" ] && [ -n "$(ls -A build)" ]; then
-            echo "✅ 编译成功!"
-            echo "构建目录内容:"
-            ls -l build/
-          else
-            echo "❌ 错误: 编译失败或没有生成文件"
-            echo "尝试手动编译..."
-            exit 1
-          fi
-          
-      - name: Archive build artifacts
-        if: success()
+
+      - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
-          name: gnb-binaries
-          path: build/
+          name: gnb_bin
+          path: build/gnb_udp_over_tcp
           retention-days: 1
