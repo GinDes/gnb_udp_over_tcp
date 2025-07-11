@@ -11,52 +11,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: true
-          
-      - name: Check .gitmodules
-        run: cat .gitmodules
-          
-      - name: Manually clone lwip submodule
-        run: |
-          echo "Cloning lwip submodule..."
-          rm -rf lwip
-          git clone --depth 1 https://github.com/gnbdev/lwip.git lwip
-          echo "lwip commit: $(git -C lwip rev-parse HEAD)"
-          
-      - name: Verify lwip directory
-        run: |
-          if [ -d "lwip" ]; then
-            echo "✅ lwip directory exists"
-          else
-            echo "❌ lwip directory missing"
-            exit 1
-          fi
-          
+        
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y liblzo2-dev liblz4-dev
           
-      - name: Show Makefile content
-        run: cat Makefile*
+      - name: Show build.sh content
+        run: cat build.sh
           
-      - name: Compile GNB
+      - name: Build with debug mode
         run: |
-          echo "Starting compilation for OS: $OS"
-          make
-        env:
-          OS: linux
+          chmod +x build.sh
+          bash -x ./build.sh
           
-      - name: Check build output
+      - name: Verify build output
         run: |
-          if [ -d "build" ]; then
-            echo "Build directory contents:"
-            ls -l build/
-          else
-            echo "Build directory not found!"
-            exit 1
-          fi
+          echo "构建目录内容:"
+          ls -l build/
+          echo "文件类型:"
+          file build/*
           
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
