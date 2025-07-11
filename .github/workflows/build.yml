@@ -1,66 +1,18 @@
 name: Build GNB UDP over TCP
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Show directory structure
-        run: |
-          echo "项目结构:"
-          ls -la
-          echo "src 目录内容:"
-          ls -l src/
-          
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
-          echo "GCC 版本: $(gcc --version | head -n1)"
-          echo "Make 版本: $(make --version | head -n1)"
-          
-      - name: Compile project
-        run: |
-          echo "开始编译..."
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
+      - run: |
           make -f Makefile.linux
-          
-          echo "编译后目录内容:"
-          ls -la
-          
-      - name: Verify binary
-        run: |
-          if [ -f "gnb_udp_over_tcp" ]; then
-            echo "✅ 编译成功!"
-            echo "文件大小: $(du -h gnb_udp_over_tcp | cut -f1)"
-            echo "文件类型:"
-            file gnb_udp_over_tcp
-            echo "依赖库:"
-            ldd gnb_udp_over_tcp || true
-          else
-            echo "❌ 错误: 未找到 gnb_udp_over_tcp"
-            echo "当前目录内容:"
-            ls -la
-            exit 1
-          fi
-          
-      - name: Prepare for packaging
-        run: |
           mkdir -p build
           mv gnb_udp_over_tcp build/
-          echo "打包前验证:"
-          ls -l build/
-          
-      - name: Archive binary
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: gnb-udp-over-tcp-binary
+          name: gnb-binary
           path: build/gnb_udp_over_tcp
-          if-no-files-found: error
-          retention-days: 3
