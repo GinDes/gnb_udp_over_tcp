@@ -16,41 +16,29 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mingw-w64
+          
+      - name: Verify MinGW installation
+        run: |
           echo "MinGW 编译器版本:"
           x86_64-w64-mingw32-gcc --version
-          
-      - name: Apply safe Windows compatibility patch
-        run: |
-          # 备份原始文件
-          cp src/service/gnb_udp_over_tcp.c src/service/gnb_udp_over_tcp.c.orig
-          
-          # 精确替换守护进程成员访问
-          sed -i 's/->daemon/_daemon_compat/g' src/service/gnb_udp_over_tcp.c
-          
-          # 添加平台兼容性宏
-          echo -e "#ifdef _WIN32\n#define _daemon_compat 0\n#else\n#define _daemon_compat conf->daemon\n#endif\n$(cat src/service/gnb_udp_over_tcp.c)" > src/service/gnb_udp_over_tcp.c
-          
-          # 验证修改
-          echo "文件开头内容:"
-          head -n 10 src/service/gnb_udp_over_tcp.c
-          echo "关键代码段:"
-          grep -C 5 '_daemon_compat' src/service/gnb_udp_over_tcp.c
+          echo "库搜索路径:"
+          x86_64-w64-mingw32-gcc -print-search-dirs
           
       - name: Compile for Windows
         run: |
-          set -x  # 显示详细命令
+          # 使用正确的 MinGW 编译器
           make -f Makefile.mingw_x86_64 CC=x86_64-w64-mingw32-gcc
           
-      - name: Verify Windows executable
-        run: |
+          # 显示编译后的文件信息
           if [ -f "gnb_udp_over_tcp.exe" ]; then
-            echo "✅ Windows 可执行文件生成成功!"
-            echo "文件信息:"
+            echo "✅ 编译成功!"
+            echo "文件大小: $(du -h gnb_udp_over_tcp.exe | cut -f1)"
+            echo "文件类型:"
             file gnb_udp_over_tcp.exe
-            echo "依赖分析:"
-            x86_64-w64-mingw32-objdump -p gnb_udp_over_tcp.exe | grep 'DLL Name'
           else
-            echo "❌ 错误: 未找到 gnb_udp_over_tcp.exe"
+            echo "❌ 错误: 未找到可执行文件"
+            echo "当前目录内容:"
+            ls -la
             exit 1
           fi
           
