@@ -11,17 +11,27 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev
+          sudo apt-get install -y liblzo2-dev liblz4-dev cmake build-essential
 
-      - name: Compile GNB
-        run: make
+      # 调试步骤（可删除）
+      - name: List files
+        run: ls -la
+
+      - name: Build GNB
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make
 
       - name: Archive build artifacts
-        uses: actions/upload-artifact@v4  # 更新到 v4 版本
+        uses: actions/upload-artifact@v4
         with:
           name: gnb-binaries
           path: build/
