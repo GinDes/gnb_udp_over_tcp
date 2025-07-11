@@ -12,27 +12,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true
+          
+      - name: Check .gitmodules
+        run: cat .gitmodules
+          
+      - name: Manually clone lwip submodule
+        run: |
+          echo "Cloning lwip submodule..."
+          rm -rf lwip
+          git clone --depth 1 https://github.com/gnbdev/lwip.git lwip
+          echo "lwip commit: $(git -C lwip rev-parse HEAD)"
+          
+      - name: Verify lwip directory
+        run: |
+          if [ -d "lwip" ]; then
+            echo "✅ lwip directory exists"
+          else
+            echo "❌ lwip directory missing"
+            exit 1
+          fi
           
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y liblzo2-dev liblz4-dev
           
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
-        
-      - name: Show directory structure
-        run: |
-          echo "Project contents:"
-          ls -la
-          echo "lwip submodule contents:"
-          ls -la lwip
+      - name: Show Makefile content
+        run: cat Makefile*
           
-      - name: Compile GNB with build script
+      - name: Compile GNB
         run: |
-          chmod +x build.sh
-          ./build.sh
+          echo "Starting compilation for OS: $OS"
+          make
+        env:
+          OS: linux
+          
+      - name: Check build output
+        run: |
+          if [ -d "build" ]; then
+            echo "Build directory contents:"
+            ls -l build/
+          else
+            echo "Build directory not found!"
+            exit 1
+          fi
           
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
