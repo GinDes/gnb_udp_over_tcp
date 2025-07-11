@@ -15,22 +15,54 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev
+          sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
           
-      - name: Show build.sh content
-        run: cat build.sh
-          
-      - name: Build with debug mode
+      - name: Setup lwip dependency
         run: |
-          chmod +x build.sh
-          bash -x ./build.sh
+          echo "设置 lwip 依赖..."
+          mkdir -p libs
+          cd libs
+          wget https://github.com/gnbdev/lwip/archive/refs/heads/master.tar.gz
+          tar xzf master.tar.gz
+          mv lwip-master lwip
+          rm master.tar.gz
+          cd ..
+          
+      - name: Verify directory structure
+        run: |
+          echo "项目结构:"
+          tree -L 3 || ls -R
+          
+      - name: Show Makefile content
+        run: |
+          echo "Makefile.linux 内容:"
+          cat Makefile.linux
+          
+      - name: Compile for Linux
+        run: |
+          echo "开始编译..."
+          make -f Makefile.linux
+          
+          echo "编译结果:"
+          ls -l gnb gnb_ctl gnb_crypto || true
+          
+          echo "创建 build 目录..."
+          mkdir -p build
+          mv gnb gnb_ctl gnb_crypto build/ 2>/dev/null || true
           
       - name: Verify build output
         run: |
-          echo "构建目录内容:"
-          ls -l build/
-          echo "文件类型:"
-          file build/*
+          if [ -d "build" ]; then
+            echo "构建目录内容:"
+            ls -l build/
+            echo "文件详情:"
+            file build/*
+          else
+            echo "错误: build 目录不存在"
+            echo "当前目录内容:"
+            ls -la
+            exit 1
+          fi
           
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
