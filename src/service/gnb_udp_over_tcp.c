@@ -73,8 +73,6 @@ static void setup_log_ctx(udp_over_tcp_service_conf_t *conf, gnb_log_ctx_t *log,
     if ( 0!=conf->daemon ) {
         log->output_type = GNB_LOG_OUTPUT_NONE;
     }
-    #else
-    log->output_type = GNB_LOG_OUTPUT_NONE;
     #endif
 
     if ( NULL != log_path ) {
