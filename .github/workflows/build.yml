@@ -1,0 +1,28 @@
+name: Build GNB
+
+on:
+  push:
+    branches: [ main ]  # 触发分支
+  workflow_dispatch:    # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liblzo2-dev liblz4-dev
+
+      - name: Compile GNB
+        run: make
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: gnb-binaries
+          path: build/   # 项目编译输出目录
+          retention-days: 1
