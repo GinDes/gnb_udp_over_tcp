@@ -2,8 +2,8 @@ name: Build GNB
 
 on:
   push:
-    branches: [ main ]  # 触发分支
-  workflow_dispatch:    # 允许手动触发
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,8 +21,8 @@ jobs:
         run: make
 
       - name: Archive build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # 更新到 v4 版本
         with:
           name: gnb-binaries
-          path: build/   # 项目编译输出目录
+          path: build/
           retention-days: 1
