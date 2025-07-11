@@ -15,56 +15,41 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
+          sudo apt-get install -y liblzo2-dev liblz4-dev gcc make
           
-      - name: Setup lwip dependency
+      - name: Try official Makefile
         run: |
-          echo "设置 lwip 依赖..."
-          mkdir -p libs
-          cd libs
-          wget https://github.com/gnbdev/lwip/archive/refs/heads/master.tar.gz
-          tar xzf master.tar.gz
-          mv lwip-master lwip
-          rm master.tar.gz
-          cd ..
+          # 尝试使用官方 Makefile
+          if [ -f "Makefile.linux" ]; then
+            echo "使用 Makefile.linux 编译..."
+            make -f Makefile.linux
+          else
+            echo "错误: Makefile.linux 不存在"
+            exit 1
+          fi
           
-      - name: Verify directory structure
+      - name: Move artifacts to build directory
         run: |
-          echo "项目结构:"
-          tree -L 3 || ls -R
-          
-      - name: Show Makefile content
-        run: |
-          echo "Makefile.linux 内容:"
-          cat Makefile.linux
-          
-      - name: Compile for Linux
-        run: |
-          echo "开始编译..."
-          make -f Makefile.linux
-          
-          echo "编译结果:"
-          ls -l gnb gnb_ctl gnb_crypto || true
-          
-          echo "创建 build 目录..."
           mkdir -p build
-          mv gnb gnb_ctl gnb_crypto build/ 2>/dev/null || true
+          # 尝试移动所有可能的目标文件
+          [ -f "gnb" ] && mv gnb build/
+          [ -f "gnb_ctl" ] && mv gnb_ctl build/
+          [ -f "gnb_crypto" ] && mv gnb_crypto build/
           
       - name: Verify build output
         run: |
-          if [ -d "build" ]; then
+          if [ -d "build" ] && [ -n "$(ls -A build)" ]; then
+            echo "✅ 编译成功!"
             echo "构建目录内容:"
             ls -l build/
-            echo "文件详情:"
-            file build/*
           else
-            echo "错误: build 目录不存在"
-            echo "当前目录内容:"
-            ls -la
+            echo "❌ 错误: 编译失败或没有生成文件"
+            echo "尝试手动编译..."
             exit 1
           fi
           
       - name: Archive build artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: gnb-binaries
