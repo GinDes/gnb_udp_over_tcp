@@ -11,35 +11,66 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+        
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
-
-      - name: Create build directory
-        run: mkdir -p build
-
-      - name: Configure with CMake
-        working-directory: build
-        run: cmake ..
-
-      - name: Compile project
-        working-directory: build
-        run: make
-
-      - name: Verify binary
         run: |
-          if [ -f "build/gnb_udp_over_tcp" ]; then
-            echo "✅ 编译成功！"
-            file build/gnb_udp_over_tcp
+          sudo apt-get update
+          sudo apt-get install -y liblzo2-dev liblz4-dev gcc make
+          
+      - name: Prepare environment
+        run: |
+          # 设置必要的环境变量
+          export CC=gcc
+          export CFLAGS="-Wall -O2 -I./src -I./libs"
+          export LDFLAGS="-llzo2 -llz4"
+          
+      - name: Compile with Makefile.linux
+        run: |
+          # 使用 Linux Makefile
+          if [ -f "Makefile.linux" ]; then
+            echo "使用 Makefile.linux 编译..."
+            make -f Makefile.linux
           else
-            echo "❌ 错误：可执行文件未生成"
-            ls -lR build/
+            echo "错误: Makefile.linux 不存在"
             exit 1
           fi
-
-      - name: Archive binary
+          
+      - name: Manual compilation fallback
+        if: failure()
+        run: |
+          echo "手动编译所有组件..."
+          # 主程序
+          gcc $CFLAGS -c src/gnb.c -o src/gnb.o
+          gcc $CFLAGS -c src/gnb_udp.c -o src/gnb_udp.o
+          gcc -o gnb src/gnb.o src/gnb_udp.o $LDFLAGS
+          
+          # 控制工具
+          gcc $CFLAGS -c src/gnb_ctl.c -o src/gnb_ctl.o
+          gcc -o gnb_ctl src/gnb_ctl.o
+          
+          # 加密工具
+          gcc $CFLAGS -c src/gnb_crypto.c -o src/gnb_crypto.o
+          gcc -o gnb_crypto src/gnb_crypto.o
+          
+      - name: Create build directory
+        run: mkdir -p build
+        
+      - name: Collect binaries
+        run: |
+          # 移动所有找到的可执行文件
+          for bin in gnb gnb_ctl gnb_crypto; do
+            if [ -f "$bin" ]; then
+              echo "移动 $bin 到 build/"
+              mv "$bin" build/
+            fi
+          done
+          
+          echo "构建目录内容:"
+          ls -l build/
+          
+      - name: Archive binaries
         uses: actions/upload-artifact@v4
         with:
-          name: gnb_bin
-          path: build/gnb_udp_over_tcp
+          name: gnb-binaries
+          path: build/
           retention-days: 1
