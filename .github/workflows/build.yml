@@ -15,62 +15,49 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblzo2-dev liblz4-dev gcc make
+          sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
           
-      - name: Prepare environment
-        run: |
-          # 设置必要的环境变量
-          export CC=gcc
-          export CFLAGS="-Wall -O2 -I./src -I./libs"
-          export LDFLAGS="-llzo2 -llz4"
-          
-      - name: Compile with Makefile.linux
-        run: |
-          # 使用 Linux Makefile
-          if [ -f "Makefile.linux" ]; then
-            echo "使用 Makefile.linux 编译..."
-            make -f Makefile.linux
-          else
-            echo "错误: Makefile.linux 不存在"
-            exit 1
-          fi
-          
-      - name: Manual compilation fallback
-        if: failure()
-        run: |
-          echo "手动编译所有组件..."
-          # 主程序
-          gcc $CFLAGS -c src/gnb.c -o src/gnb.o
-          gcc $CFLAGS -c src/gnb_udp.c -o src/gnb_udp.o
-          gcc -o gnb src/gnb.o src/gnb_udp.o $LDFLAGS
-          
-          # 控制工具
-          gcc $CFLAGS -c src/gnb_ctl.c -o src/gnb_ctl.o
-          gcc -o gnb_ctl src/gnb_ctl.o
-          
-          # 加密工具
-          gcc $CFLAGS -c src/gnb_crypto.c -o src/gnb_crypto.o
-          gcc -o gnb_crypto src/gnb_crypto.o
-          
-      - name: Create build directory
-        run: mkdir -p build
+      - name: Compile for Linux
+        run: make -f Makefile.linux
         
-      - name: Collect binaries
+      - name: Verify compilation
         run: |
-          # 移动所有找到的可执行文件
+          echo "编译后目录内容:"
+          ls -la
+          
+          # 检查可执行文件是否存在
           for bin in gnb gnb_ctl gnb_crypto; do
             if [ -f "$bin" ]; then
-              echo "移动 $bin 到 build/"
-              mv "$bin" build/
+              echo "✅ $bin 在根目录"
+            elif [ -f "src/$bin" ]; then
+              echo "✅ $bin 在 src 目录"
+            else
+              echo "❌ 未找到 $bin"
             fi
           done
           
+      - name: Prepare build directory
+        run: |
+          mkdir -p build
+          
+          # 搜索并移动所有可能的二进制文件
+          find . -type f \( -name "gnb" -o -name "gnb_ctl" -o -name "gnb_crypto" \) \
+                 -not -path "./build/*" \
+                 -exec mv -v {} build/ \;
+          
           echo "构建目录内容:"
           ls -l build/
+          if [ -z "$(ls -A build)" ]; then
+            echo "❌ 错误: 未找到任何可执行文件"
+            echo "所有文件:"
+            find . -type f -exec ls -l {} \;
+            exit 1
+          fi
           
       - name: Archive binaries
         uses: actions/upload-artifact@v4
         with:
           name: gnb-binaries
           path: build/
+          if-no-files-found: error
           retention-days: 1
