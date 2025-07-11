@@ -12,52 +12,55 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
+      - name: Show directory structure
+        run: |
+          echo "项目结构:"
+          ls -la
+          echo "src 目录内容:"
+          ls -l src/
+          
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y liblzo2-dev liblz4-dev build-essential
+          echo "GCC 版本: $(gcc --version | head -n1)"
+          echo "Make 版本: $(make --version | head -n1)"
           
-      - name: Compile for Linux
-        run: make -f Makefile.linux
-        
-      - name: Verify compilation
+      - name: Compile project
         run: |
+          echo "开始编译..."
+          make -f Makefile.linux
+          
           echo "编译后目录内容:"
           ls -la
           
-          # 检查可执行文件是否存在
-          for bin in gnb gnb_ctl gnb_crypto; do
-            if [ -f "$bin" ]; then
-              echo "✅ $bin 在根目录"
-            elif [ -f "src/$bin" ]; then
-              echo "✅ $bin 在 src 目录"
-            else
-              echo "❌ 未找到 $bin"
-            fi
-          done
-          
-      - name: Prepare build directory
+      - name: Verify binary
         run: |
-          mkdir -p build
-          
-          # 搜索并移动所有可能的二进制文件
-          find . -type f \( -name "gnb" -o -name "gnb_ctl" -o -name "gnb_crypto" \) \
-                 -not -path "./build/*" \
-                 -exec mv -v {} build/ \;
-          
-          echo "构建目录内容:"
-          ls -l build/
-          if [ -z "$(ls -A build)" ]; then
-            echo "❌ 错误: 未找到任何可执行文件"
-            echo "所有文件:"
-            find . -type f -exec ls -l {} \;
+          if [ -f "gnb_udp_over_tcp" ]; then
+            echo "✅ 编译成功!"
+            echo "文件大小: $(du -h gnb_udp_over_tcp | cut -f1)"
+            echo "文件类型:"
+            file gnb_udp_over_tcp
+            echo "依赖库:"
+            ldd gnb_udp_over_tcp || true
+          else
+            echo "❌ 错误: 未找到 gnb_udp_over_tcp"
+            echo "当前目录内容:"
+            ls -la
             exit 1
           fi
           
-      - name: Archive binaries
+      - name: Prepare for packaging
+        run: |
+          mkdir -p build
+          mv gnb_udp_over_tcp build/
+          echo "打包前验证:"
+          ls -l build/
+          
+      - name: Archive binary
         uses: actions/upload-artifact@v4
         with:
-          name: gnb-binaries
-          path: build/
+          name: gnb-udp-over-tcp-binary
+          path: build/gnb_udp_over_tcp
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 3
